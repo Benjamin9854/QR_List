@@ -133,23 +133,25 @@ def listar_usuarios(db: Session = Depends(get_db)):
 
 # Ruta para subir una imagen
 @app.post("/imagenes/")
-async def subir_imagen(file: UploadFile = File(...), db: Session = Depends(get_db)):
-    if not file.filename.endswith(".jpg"):
-        raise HTTPException(status_code=400, detail="El archivo debe ser un JPG")
+async def subir_imagen(file: bytes = File(...), db: Session = Depends(get_db)):
+    # Define el nombre del archivo de forma estática o genera uno único
+    filename = "imagen_recibida.jpg"  # Puedes usar una lógica más compleja si necesitas nombres únicos
+    file_path = os.path.join(UPLOAD_FOLDER, filename)
     
-    file_path = os.path.join(UPLOAD_FOLDER, file.filename)
-    
-    # Guardar la imagen en el disco
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
-    
-    # Guardar los metadatos en la base de datos
-    nueva_imagen = ImagenDB(filename=file.filename)
-    db.add(nueva_imagen)
-    db.commit()
-    db.refresh(nueva_imagen)
-    
-    return {"detail": "Imagen subida correctamente", "filename": nueva_imagen.filename}
+    try:
+        # Guardar la imagen en el disco
+        with open(file_path, "wb") as buffer:
+            buffer.write(file)
+        
+        # Guardar los metadatos en la base de datos
+        nueva_imagen = ImagenDB(filename=filename)
+        db.add(nueva_imagen)
+        db.commit()
+        db.refresh(nueva_imagen)
+        
+        return {"detail": "Imagen subida correctamente", "filename": nueva_imagen.filename}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error al guardar la imagen: {str(e)}")
 
 # Ruta para extraer y borrar la última imagen
 @app.get("/imagenes/ultima/")
